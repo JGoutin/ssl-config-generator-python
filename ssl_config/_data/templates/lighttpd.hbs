@@ -1,0 +1,48 @@
+# generated {{output.date}}, {{{output.link}}}
+{{#if form.hsts}}
+$SERVER["socket"] == ":80" {
+    $HTTP["host"] =~ ".*" {
+        url.redirect = (".*" => "https://%0$0")
+    }
+}
+
+{{/if}}
+$SERVER["socket"] == ":443" {
+    protocol     = "https://"
+    ssl.engine   = "enable"
+    ssl.disable-client-renegotiation = "enable"
+
+    # pemfile is cert+privkey, ca-file is the intermediate chain in one file
+    ssl.pemfile               = "/path/to/signed_cert_plus_private_key.pem"
+    ssl.ca-file               = "/path/to/intermediate_certificate.pem"
+{{#if output.usesDhe}}
+    {{#if (minver "1.4.29" form.serverVersion)}}
+
+    # {{output.dhCommand}} > /path/to/dhparam.pem
+    ssl.dh-file               = "/path/to/dhparam.pem"
+    {{/if}}
+{{/if}}
+
+    # Environment flag for HTTPS enabled
+    setenv.add-environment = (
+        "HTTPS" => "on"
+    )
+
+    # {{form.config}} configuration, tweak to your needs
+{{#if (minver "1.4.48" form.serverVersion)}}
+    ssl.openssl.ssl-conf-cmd = ("Protocol" => "ALL, -SSLv2, -SSLv3{{#unless (includes "TLSv1" output.protocols)}}, -TLSv1{{/unless}}{{#unless (includes "TLSv1.1" output.protocols)}}, -TLSv1.1{{/unless}}{{#unless (includes "TLSv1.2" output.protocols)}}, -TLSv1.2{{/unless}}")
+{{else}}
+    # Please upgrade to 1.4.48 or else you cannot fully disable deprecated protocols
+    ssl.use-sslv2 = "disable"
+    ssl.use-sslv3 = "disable"
+{{/if}}
+    ssl.cipher-list           = "{{{join output.ciphers ":"}}}"
+    ssl.honor-cipher-order    = "{{#if output.serverPreferredOrder}}enable{{else}}disable{{/if}}"
+{{#if form.hsts}}
+
+    # HTTP Strict Transport Security ({{output.hstsMaxAge}} seconds
+    setenv.add-response-header  = (
+        "Strict-Transport-Security" => "max-age={{output.hstsMaxAge}}"
+    )
+{{/if}}
+}

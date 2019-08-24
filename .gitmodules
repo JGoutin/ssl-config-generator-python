@@ -1,0 +1,3 @@
+[submodule "ssl-config-generator"]
+	path = ssl-config-generator
+	url = https://github.com/mozilla/ssl-config-generator.git
