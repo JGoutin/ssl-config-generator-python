@@ -4,14 +4,13 @@ Mozilla SSL Generator, Python edition
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-# TODO: setup.py, CLI, travis CI, PR Pybars
+
 __licence__ = "MPL-2.0"
 __copyright__ = "The SSL configurations are copyright Mozilla\n" \
                 "The Python library is copyright J.Goutin"
 
 from datetime import date as _date
 from json import load as _load, loads as _loads
-from re import sub as _sub
 from os import listdir as _listdir
 from os.path import dirname as _dirname, join as _join, splitext as _splitext
 
@@ -26,7 +25,8 @@ SERVERS = tuple(sorted(
     _splitext(name)[0] for name in _listdir(_join(_DATA_DIR, 'templates'))))
 
 with open(_join(_DATA_DIR, 'guidelines.json'), 'rt') as json_file:
-    _GUIDELINES = _load(json_file)
+    #: Guidelines information as dict
+    GUIDELINES = _load(json_file)
 
 #: Mozilla SSL configuration levels
 #:
@@ -41,11 +41,11 @@ with open(_join(_DATA_DIR, 'guidelines.json'), 'rt') as json_file:
 #: Old:
 #:     Compatible with a number of very old clients, and should be used only as
 #:     a last resort.
-CONFIGS = tuple(sorted(_GUIDELINES['configurations']))
+CONFIGS = tuple(sorted(GUIDELINES['configurations']))
 
 #: Mozilla SSL guidelines version
 #: https://wiki.mozilla.org/Security/Server_Side_TLS
-GUIDELINES_VERSION = _GUIDELINES['version']
+GUIDELINES_VERSION = GUIDELINES['version']
 
 #: Python edition major and minor versions match with Mozilla SSL guidelines
 #: version.
@@ -104,7 +104,7 @@ def _get_state(server, config='intermediate', server_version=None,
     Returns:
         dict: state
     """
-    ssc = _GUIDELINES['configurations'][config]
+    ssc = GUIDELINES['configurations'][config]
 
     cfg = _get_configs()
     server_cfg = cfg[server]
@@ -134,7 +134,7 @@ def _get_state(server, config='intermediate', server_version=None,
     ciphers = ssc['ciphers'][server_cfg.get('cipherFormat', 'openssl')]
     supported_ciphers = server_cfg.get('supportedCiphers')
     if supported_ciphers:
-        ciphers = list(set(ciphers) & set(supported_ciphers))
+        ciphers = [cipher for cipher in ciphers if cipher in supported_ciphers]
 
     # Select the command to generate the DH parameters files
     dh_param_size = ssc.get('dh_param_size')
@@ -180,7 +180,7 @@ def _get_state(server, config='intermediate', server_version=None,
                            '_DHE_' in cipher for cipher in ciphers),
             'usesOpenssl': server_cfg.get('usesOpenssl', True),
         },
-        'sstls': _GUIDELINES
+        'sstls': GUIDELINES
     }
 
 
